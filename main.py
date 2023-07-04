@@ -1,8 +1,8 @@
 import time
 
-from fastapi import FastAPI, Response, status, HTTPException
+from fastapi import FastAPI, status, HTTPException
 from pydantic import BaseModel
-from datetime import date
+from datetime import date, datetime
 
 import psycopg
 from psycopg.rows import dict_row
@@ -13,7 +13,9 @@ app = FastAPI()
 
 class Task(BaseModel):
     task_name: str
-    date_due: date
+    task_category: str = "Other"
+    date_due: str = date.today()
+    time_due: datetime = datetime.now().strftime("%H:%M:%S")
     finished: bool = False
 
 
@@ -36,7 +38,7 @@ def root():
 
 @app.get("/tasks")
 def get_tasks():
-    cursor.execute("SELECT * FROM tasks")
+    cursor.execute("""SELECT * FROM tasks""")
     tasks = cursor.fetchall()
     return {"tasks": tasks}
 
@@ -48,3 +50,22 @@ def get_tasks_with_category(category: str):
     if not tasks:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"no tasks under category: {category}")
     return {"tasks": tasks}
+
+
+@app.post("/tasks", status_code=status.HTTP_201_CREATED)
+def create_task(task: Task):
+    cursor.execute("""INSERT INTO tasks (task_name, task_category, date_due, time_due, task_finished) VALUES (%s, %s, %s, %s, %s) RETURNING *""", (task.task_name, task.task_category, task.date_due, task.time_due, task.finished))
+    new_task = cursor.fetchone()
+    conn.commit()
+    return {"task": new_task}
+
+
+@app.delete("/tasks/{id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_task(id:int):
+    cursor.execute("""DELETE FROM tasks WHERE id = %s RETURNING *""", (str(id),))
+    deleted_task = cursor.fetchone()
+    conn.commit()
+
+    if not deleted_task:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"no tasks with id: {id} was not found")
+
