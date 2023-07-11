@@ -91,11 +91,13 @@ def draw_tasks():
 
         notes = []
         task_time = str(tasks["date_due"])
+        due_font_colour = "black"
+        if tasks["date_due"] <= date.today():
+            due_font_colour = "red"
+
         if tasks["time_due"] != None:
             task_time += "\n"
-            task_time += tasks["time_due"].strftime("%I:%M")
-
-        print(task_time)
+            task_time += tasks["time_due"].strftime("%I:%M %p")
 
         if tasks["task_notes"] != None:
             tasks_notes_frame = customtkinter.CTkScrollableFrame(master=right_frame, width=340, label_fg_color="black")
@@ -120,7 +122,7 @@ def draw_tasks():
                                                  text=task_str)
             task_label.grid(row=row_counter, column=0)
 
-            task_due = customtkinter.CTkLabel(master=right_frame, width=240, height=tasks_notes_frame.cget("height")+14, fg_color="#dbdbdb", corner_radius=5, text=task_time, font=app_font)
+            task_due = customtkinter.CTkLabel(master=right_frame, width=240, height=tasks_notes_frame.cget("height")+14, fg_color="#dbdbdb", corner_radius=5, text=task_time, font=app_font, text_color=due_font_colour)
             task_due.grid(row=row_counter, column=2, pady=2, padx=2)
 
         else:
@@ -135,11 +137,10 @@ def draw_tasks():
             task_label.grid(row=row_counter, column=0)
 
             task_due = customtkinter.CTkLabel(master=right_frame, width=240, height=62,
-                                              fg_color="#dbdbdb", corner_radius=5, text=task_time, font=app_font)
+                                              fg_color="#dbdbdb", corner_radius=5, text=task_time, font=app_font, text_color=due_font_colour)
             task_due.grid(row=row_counter, column=2, pady=2, padx=1)
 
         task_notes.append(notes)
-        print(notes)
         row_counter += 1
 
 
@@ -187,6 +188,29 @@ def draw_categories():
         row_counter += 1
 
 
+def draw_titles():
+    to_do_title_label = customtkinter.CTkLabel(master=right_frame, justify="center", font=app_font, fg_color="#232323",
+                                               width=400, height=62, pady=20, padx=1, text_color="white",
+                                               text="To-Do List")
+    to_do_title_label.grid(row=0, column=0, rowspan=1)
+
+    notes_title_label = customtkinter.CTkLabel(master=right_frame, justify="center", font=app_font, fg_color="#232323",
+                                               corner_radius=4, width=340, pady=20, text_color="white", text="Notes")
+    notes_title_label.grid(row=0, column=1)
+
+    edit_title_label = customtkinter.CTkLabel(master=right_frame, justify="center", font=app_font, fg_color="#232323",
+                                              width=250, pady=20, text_color="white", text="Due")
+    edit_title_label.grid(row=0, column=2)
+
+def redraw_tasks():
+    for widget in right_frame.winfo_children():
+        widget.destroy()
+
+    get_tasks()
+    draw_titles()
+    draw_tasks()
+    root.update()
+
 
 def add_task():
     root.geometry("1200x750")
@@ -205,17 +229,10 @@ draw_categories()
 get_tasks()
 
 button_row = len(category_buttons) + 2
-filter_button = customtkinter.CTkButton(master=left_frame, width=200, height=50, fg_color="#232323", text_color="white", text="Apply filters", command=get_tasks)
+filter_button = customtkinter.CTkButton(master=left_frame, width=200, height=50, fg_color="#232323", text_color="white", text="Apply filters", command=redraw_tasks)
 filter_button.grid(row=button_row, column=0)
 
-to_do_title_label = customtkinter.CTkLabel(master=right_frame, justify="center", font=app_font, fg_color="#232323", width=400, height=62, pady=20, padx=1, text_color="white", text="To-Do List")
-to_do_title_label.grid(row=0, column=0, rowspan=1)
-
-notes_title_label = customtkinter.CTkLabel(master=right_frame, justify="center", font=app_font, fg_color="#232323", corner_radius=4, width=340, pady=20, text_color="white", text="Notes")
-notes_title_label.grid(row=0, column=1)
-
-edit_title_label = customtkinter.CTkLabel(master=right_frame, justify="center", font=app_font, fg_color="#232323", width=250, pady=20, text_color="white", text="Due")
-edit_title_label.grid(row=0, column=2)
+draw_titles()
 
 draw_tasks()
 
