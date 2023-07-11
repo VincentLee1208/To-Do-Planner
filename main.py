@@ -68,6 +68,22 @@ def get_tasks():
     print(task_list)
 
 
+def reconfigure_task_note(task_note):
+    new_note = ""
+    counter=0
+    for i in range(len(task_note)):
+        new_note+=task_note[i]
+        if counter>35:
+            if task_note[i] == " ":
+                new_note+= "\n"
+                counter=0
+
+        counter+=1
+
+
+    return new_note
+
+
 def draw_tasks():
     row_counter = 1
     for tasks in task_list:
@@ -84,6 +100,10 @@ def draw_tasks():
 
             note_counter = 0
             for task_note in tasks["task_notes"]:
+                if len(task_note) > 35:
+                    new_task_note = reconfigure_task_note(task_note)
+                    task_note = new_task_note
+
                 task_note_checkbox = customtkinter.CTkCheckBox(master=tasks_notes_frame, font=app_font, text=task_note, width=340)
                 task_note_checkbox.grid(row=note_counter, column=0, pady=10, padx=10)
                 notes.append(task_note_checkbox)
