@@ -33,10 +33,10 @@ while True:
 root = customtkinter.CTk(fg_color="#1f1e1c")
 root.minsize(width=750, height=750)
 root.resizable(height=False, width=False)
-root.geometry("1250x750")
+root.geometry("1300x750")
 
 app_font = customtkinter.CTkFont("Montserrat", weight="bold", size=15)
-task_font = customtkinter.CTkFont("Montserrat", weight="bold", size=15)
+task_font = customtkinter.CTkFont("Montserrat", weight="bold", size=18)
 category_font = customtkinter.CTkFont("Montserrat", size=15)
 
 
@@ -86,13 +86,16 @@ def reconfigure_task_note(task_note):
 
 def draw_tasks():
     row_counter = 1
+    task_notes.clear()
     for tasks in task_list:
 
-        task_str = str(tasks["task_name"])
-        task_label = customtkinter.CTkButton(master=right_frame, width=400, height=62, fg_color="#dbdbdb", text_color="black" ,border_color="black", border_width=1, font=app_font, text=task_str)
-        task_label.grid(row=row_counter, column=0)
-
         notes = []
+        task_time = str(tasks["date_due"])
+        if tasks["time_due"] != None:
+            task_time += "\n"
+            task_time += tasks["time_due"].strftime("%I:%M")
+
+        print(task_time)
 
         if tasks["task_notes"] != None:
             tasks_notes_frame = customtkinter.CTkScrollableFrame(master=right_frame, width=340, label_fg_color="black")
@@ -108,9 +111,32 @@ def draw_tasks():
                 task_note_checkbox.grid(row=note_counter, column=0, pady=10, padx=10)
                 notes.append(task_note_checkbox)
                 note_counter += 1
+
+            task_str = str(tasks["task_name"])
+            task_label = customtkinter.CTkButton(master=right_frame, width=400,
+                                                 height=tasks_notes_frame.cget("height")+14, fg_color="#dbdbdb",
+                                                 text_color="black", border_color="black", border_width=1,
+                                                 font=task_font,
+                                                 text=task_str)
+            task_label.grid(row=row_counter, column=0)
+
+            task_due = customtkinter.CTkLabel(master=right_frame, width=240, height=tasks_notes_frame.cget("height")+14, fg_color="#dbdbdb", corner_radius=5, text=task_time, font=app_font)
+            task_due.grid(row=row_counter, column=2, pady=2, padx=2)
+
         else:
-            tasks_notes_label = customtkinter.CTkLabel(master=right_frame, width=360, height=60, fg_color="#dbdbdb", corner_radius=5, text="")
-            tasks_notes_label.grid(row=row_counter, column=1, pady=2)
+            tasks_notes_checkbox = customtkinter.CTkLabel(master=right_frame, width=360, height=60, fg_color="#dbdbdb", corner_radius=5, text="")
+            tasks_notes_checkbox.grid(row=row_counter, column=1, pady=2)
+            task_str = str(tasks["task_name"])
+            task_label = customtkinter.CTkButton(master=right_frame, width=400,
+                                                 height=60, fg_color="#dbdbdb",
+                                                 text_color="black", border_color="black", border_width=1,
+                                                 font=task_font,
+                                                 text=task_str)
+            task_label.grid(row=row_counter, column=0)
+
+            task_due = customtkinter.CTkLabel(master=right_frame, width=240, height=62,
+                                              fg_color="#dbdbdb", corner_radius=5, text=task_time, font=app_font)
+            task_due.grid(row=row_counter, column=2, pady=2, padx=1)
 
         task_notes.append(notes)
         print(notes)
