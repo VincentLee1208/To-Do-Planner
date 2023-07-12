@@ -2,6 +2,9 @@ import json
 
 from pydantic import BaseModel
 from datetime import date, datetime
+from tkcalendar import Calendar
+from tktimepicker import SpinTimePickerModern
+from tktimepicker import constants
 
 import psycopg
 import time
@@ -38,6 +41,7 @@ root.geometry("1300x750")
 app_font = customtkinter.CTkFont("Montserrat", weight="bold", size=15)
 task_font = customtkinter.CTkFont("Montserrat", weight="bold", size=18)
 category_font = customtkinter.CTkFont("Montserrat", size=15)
+exit_font = customtkinter.CTkFont("Asap", weight="bold", size=15)
 
 
 task_list = []
@@ -46,6 +50,8 @@ category_list = []
 category_buttons = []
 all_category = []
 
+add_task_window = None
+time_selected = False
 
 def get_tasks():
     task_list.clear()
@@ -198,9 +204,8 @@ def draw_titles():
                                                corner_radius=4, width=340, pady=20, text_color="white", text="Notes")
     notes_title_label.grid(row=0, column=1)
 
-    edit_title_label = customtkinter.CTkLabel(master=right_frame, justify="center", font=app_font, fg_color="#232323",
-                                              width=250, pady=20, text_color="white", text="Due")
-    edit_title_label.grid(row=0, column=2)
+    add_task_button = customtkinter.CTkButton(master=right_frame, width=200, height=50, fg_color="#2dbbd0", text_color="white", text="Add Task", command=add_task)
+    add_task_button.grid(row=0, column=2)
 
 def redraw_tasks():
     for widget in right_frame.winfo_children():
@@ -212,8 +217,111 @@ def redraw_tasks():
     root.update()
 
 
+def open_calendar(due_date_frame, task_date_due):
+    window = customtkinter.CTkToplevel(fg_color="#232323")
+    window.geometry("%dx%d+%d+%d" %(280, 250, 2000, 300))
+    window.transient(master=due_date_frame)
+
+    year = datetime.today().year
+    month = datetime.today().month
+    day = datetime.today().day
+
+    cal = Calendar(master=window, selectmode='day', year=year, month=month, day=day, font=app_font, date_pattern="y-mm-dd")
+    cal.grid(row=0, column=0, pady=5)
+
+    cal_button = customtkinter.CTkButton(master=window, width=100, fg_color="#dbdbdb", text_color="black", text="Select Due Date",command=lambda : select_date(task_date_due, window, cal))
+
+    cal_button.grid(row=1, column=0)
+
+
+def select_date(task_date_due, window, cal):
+    selected_date = cal.get_date()
+    task_date_due.configure(text=selected_date)
+    window.destroy()
+
+
+def create_time_picker(time_picker_frame,time_picker_button, time_picker, add_task_frame):
+    time_picker_button.grid_remove()
+
+    time_selected=True
+
+    time_picker_frame.grid(row=4, column=0)
+
+    time_picker_label = customtkinter.CTkLabel(master=time_picker_frame, width=80, font=app_font, fg_color="#232323", text_color="white", text="Optional Time Deadline: ")
+    time_picker_label.grid(row=0, column=0, padx=10)
+
+    time_picker.grid(row=0, column=1, padx=20)
+
+    time_picker_exit = customtkinter.CTkButton(master=time_picker_frame, width=25, fg_color="#f3050a", font=exit_font,text_color="white", text="X", command=lambda: destroy_time_picker(time_picker, time_picker_frame,time_picker_button, add_task_frame))
+    time_picker_exit.grid(row=0, column=2)
+
+    #get time
+    #time_picker.time()
+
+
+def destroy_time_picker(time_picker, time_picker_frame, time_picker_button,add_task_frame):
+    time_selected = False
+    time_picker.grid_remove()
+    time_picker_frame.grid_remove()
+
+    time_picker_button.grid(row=4, column=0, pady=5)
+
+
+
 def add_task():
-    root.geometry("1200x750")
+    root.geometry("1680x750")
+
+    due_date = datetime.today().strftime('%Y-%m-%d')
+    time_due = None
+
+    add_task_frame = customtkinter.CTkFrame(master=root, width=400, height=750, fg_color="#232323")
+    add_task_frame.place(x=1280, y=0)
+
+    add_task_title = customtkinter.CTkLabel(master=add_task_frame, width=400, height=62, font=task_font, text="Add task", text_color="white")
+    add_task_title.grid(row=0, column=0)
+
+    task_name = customtkinter.CTkEntry(master=add_task_frame, width=350, height=30, font=app_font, placeholder_text="Task Name")
+    task_name.grid(row=1, column=0, pady=5)
+
+    task_category = customtkinter.CTkEntry(master=add_task_frame, width=350, height=30, font=app_font, placeholder_text="Task Category *optional")
+    task_category.grid(row=2, column=0, pady=5)
+
+    due_date_frame = customtkinter.CTkFrame(master=add_task_frame, width=400, height=40, fg_color="#232323", corner_radius=5)
+    due_date_frame.grid(row=3, column=0, pady=5)
+
+    due_label = customtkinter.CTkLabel(master=due_date_frame, text="Due: ", font=app_font, text_color="white", width=50, height=40, fg_color="#232323")
+    due_label.grid(row=0, column=0, pady=5)
+
+    task_date_due = customtkinter.CTkButton(master=due_date_frame, text=due_date, text_color="white", fg_color="#1f1e1c", width= 300, height=40, font=app_font, command= lambda: open_calendar(due_date_frame, task_date_due))
+    task_date_due.grid(row=0, column=1, pady=5)
+
+    #create time picker without displaying
+    time_picker_frame = customtkinter.CTkFrame(master=add_task_frame, width=350, height=40, fg_color="#232323")
+
+    time_picker = SpinTimePickerModern(time_picker_frame)
+    time_picker.addAll(constants.HOURS12)
+    time_picker.configureAll(bg="#404040", height=1, fg="#dbdbdb", font=app_font, hoverbg="#dbdbdb",
+                             hovercolor="#2dbbd0", clickedbg="#dbdbdb", clickedcolor="#2dbbd0")
+    time_picker.configure_separator(bg="#404040", fg="#ffffff")
+    #-------------------------------------
+
+    time_picker_button = customtkinter.CTkButton(master=add_task_frame, width=300, height=30, fg_color="#dbdbdb", text_color="black", font=app_font, text="Set Optional Time Deadline", command=lambda:
+                                                create_time_picker(time_picker_frame,time_picker_button, time_picker, add_task_frame))
+    time_picker_button.grid(row=4, column=0, pady=5)
+
+    task_priority_frame = customtkinter.CTkFrame(master=add_task_frame, width=400, height=30, fg_color="#232323")
+    task_priority_frame.grid(row=5, column=0, pady=10)
+
+    task_priority_label = customtkinter.CTkLabel(master=task_priority_frame, width=30, font=app_font, text_color="white", text="Task Priority: ")
+    task_priority_label.grid(row=0, column=0, padx=10)
+
+    task_priority_box = customtkinter.CTkComboBox(master=task_priority_frame, fg_color="#1f1e1c", values=["1","2","3","4","5"], font=app_font, text_color="white")
+    task_priority_box.set(1)
+    task_priority_box.grid(row=0, column=1)
+
+
+
+
 
 
 left_frame = customtkinter.CTkFrame(master=root, width=250, height=750, fg_color="#1f1e1c")
