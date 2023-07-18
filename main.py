@@ -1,4 +1,3 @@
-import json
 
 from pydantic import BaseModel
 from datetime import date, datetime
@@ -66,14 +65,26 @@ due_date = datetime.today().strftime('%Y-%m-%d')
 def get_tasks():
     task_list.clear()
     if all_category[0].get() == 1:
-        cursor.execute("""SELECT * FROM tasks ORDER BY date_due ASC, time_due ASC""")
+        cursor.execute("""SELECT * FROM tasks ORDER BY 
+                          CASE 
+                            WHEN task_finished = 'false' THEN 0
+                            WHEN task_finished = 'true' THEN 1
+                          END,
+                          date_due ASC,
+                          time_due ASC;""")
     else:
         categories_to_get = []
         for category in category_buttons:
             if category.get() != 0:
                 categories_to_get.append(category.cget("onvalue"))
 
-        cursor.execute("""SELECT * FROM tasks WHERE task_category = ANY(%s) ORDER BY date_due ASC, time_due ASC""",
+        cursor.execute("""SELECT * FROM tasks WHERE task_category = ANY(%s) ORDER BY 
+                          CASE 
+                            WHEN task_finished = 'false' THEN 0
+                            WHEN task_finished = 'true' THEN 1
+                          END,
+                          date_due ASC,
+                          time_due ASC;""",
                        (categories_to_get,))
 
     tasks = cursor.fetchall()
@@ -164,38 +175,109 @@ def add_task(task_name, task_category, time_picker, task_priority_box, notes_fra
 
 
 def delete_task(task, notes=None):
-    print(task)
-    print(notes)
-    for note in notes:
-        if note.get() == 0:
-            check_window = customtkinter.CTkToplevel()
-            check_window.geometry("300x100")
-            check_window.transient(master=root)
-            check_window_frame = customtkinter.CTkFrame(master=check_window, fg_color="#1f1e1c")
-            check_window_frame.place(x=0, y=0)
+    if notes is not None:
+        for note in notes:
+            if note.get() == 0:
+                check_window = customtkinter.CTkToplevel()
+                check_window.geometry("300x100")
+                check_window.transient(master=root)
+                check_window_frame = customtkinter.CTkFrame(master=check_window, fg_color="#1f1e1c")
+                check_window_frame.place(x=0, y=0)
 
-            check_window_label = customtkinter.CTkLabel(master=check_window_frame, width=300, height=40, font=app_font, text_color="white", text="Not all notes have been completed! \n Are you sure you want to delete?")
-            check_window_label.grid(row=0, column=0, columnspan=2, pady=5)
+                check_window_label = customtkinter.CTkLabel(master=check_window_frame, width=300, height=40, font=app_font, text_color="white", text="Not all notes have been completed! \n Are you sure you want to delete task?")
+                check_window_label.grid(row=0, column=0, columnspan=2, pady=5)
 
-            yes_button = customtkinter.CTkButton(master=check_window_frame, width=50, height=30, font=app_font, text_color="white", text="Yes", command=lambda:remove_task(task, check_window))
-            yes_button.grid(row=1, column=0, padx=10, pady=10)
+                yes_button = customtkinter.CTkButton(master=check_window_frame, width=50, height=30, font=app_font, text_color="white", text="Yes", command=lambda:remove_task(task, check_window))
+                yes_button.grid(row=1, column=0, padx=10, pady=10)
 
-            no_button = customtkinter.CTkButton(master=check_window_frame, width=50, height=30, font=app_font, text_color="white", text="No", command=lambda: destroy_window(check_window))
-            no_button.grid(row=1, column=1, padx=10, pady=10)
+                no_button = customtkinter.CTkButton(master=check_window_frame, width=50, height=30, font=app_font, text_color="white", text="No", command=lambda: destroy_window(check_window))
+                no_button.grid(row=1, column=1, padx=10, pady=10)
 
-            break
+                return
+
+    remove_task(task)
 
 
-def remove_task(task, check_window):
-    destroy_window(check_window)
+def remove_task(task, check_window=None):
+    if check_window is not None:
+        destroy_window(check_window)
 
     task_id = task["id"]
     cursor.execute("""DELETE FROM tasks WHERE id = %s RETURNING *""", (str(task_id),))
     deleted_task = cursor.fetchone()
     conn.commit()
 
+    success_window = customtkinter.CTkToplevel()
+    success_window.geometry("300x100")
+    success_window.transient(master=root)
+
+    success_window.transient(master=root)
+    success_window_frame = customtkinter.CTkFrame(master=success_window, fg_color="#1f1e1c")
+    success_window_frame.place(x=0, y=0)
+
+    success_window_label = customtkinter.CTkLabel(master=success_window_frame, width=300, height=40, font=app_font,
+                                                text_color="white",
+                                                text="Task has been successfully deleted!")
+    success_window_label.grid(row=0, column=0, pady=5)
+
+    okay_button = customtkinter.CTkButton(master=success_window_frame, width=50, height=30, font=app_font, text_color="white", text="Okay", command=lambda: destroy_window(success_window))
+    okay_button.grid(row=1, column=0, pady=10)
+
     redraw_tasks()
     redraw_categories()
+
+
+def complete_task(task, notes=None):
+    if not task["task_finished"]:
+        if notes is not None:
+            for note in notes:
+                if note.get() == 0:
+                    check_window = customtkinter.CTkToplevel()
+                    check_window.geometry("300x100")
+                    check_window.transient(master=root)
+                    check_window_frame = customtkinter.CTkFrame(master=check_window, fg_color="#1f1e1c")
+                    check_window_frame.place(x=0, y=0)
+
+                    check_window_label = customtkinter.CTkLabel(master=check_window_frame, width=300, height=40,
+                                                                font=app_font, text_color="white",
+                                                                text="Not all notes have been completed! \n Are you sure you want to complete task?")
+                    check_window_label.grid(row=0, column=0, columnspan=2, pady=5)
+
+                    yes_button = customtkinter.CTkButton(master=check_window_frame, width=50, height=30, font=app_font,
+                                                         text_color="white", text="Yes",
+                                                         command=lambda: change_task_complete(task, check_window))
+                    yes_button.grid(row=1, column=0, padx=10, pady=10)
+
+                    no_button = customtkinter.CTkButton(master=check_window_frame, width=50, height=30, font=app_font,
+                                                        text_color="white", text="No",
+                                                        command=lambda: destroy_window(check_window))
+                    no_button.grid(row=1, column=1, padx=10, pady=10)
+
+                    return
+
+        change_task_complete(task)
+    else:
+        change_task_complete(task)
+
+
+def change_task_complete(task,check_window=None):
+    if check_window is not None:
+        destroy_window(check_window)
+
+    task_id = task["id"]
+    if task["task_finished"] is False:
+        cursor.execute("""UPDATE tasks SET task_finished = true WHERE id = %s""", (str(task_id),))
+        conn.commit()
+    else:
+        cursor.execute("""UPDATE tasks SET task_finished = false WHERE id = %s""", (str(task_id),))
+        conn.commit()
+
+    redraw_tasks()
+    redraw_categories()
+
+
+def create_edit_window(task, notes=None):
+
 
 
 def destroy_window(window):
@@ -236,14 +318,23 @@ def draw_tasks():
     for i in range(len(task_list)):
 
         notes = []
-        task_time = str(task_list[i]["date_due"])
+        task_time = ""
+
         due_font_colour = "black"
         if task_list[i]["date_due"] <= date.today():
             due_font_colour = "red"
 
-        if task_list[i]["time_due"] != None:
-            task_time += "\n"
-            task_time += task_list[i]["time_due"].strftime("%I:%M %p")
+        if task_list[i]["task_finished"]:
+            due_font_colour = "green"
+            task_time += "Completed"
+        else:
+            task_time += str(task_list[i]["date_due"])
+            if task_list[i]["time_due"] is not None:
+                task_time += "\n"
+                task_time += task_list[i]["time_due"].strftime("%I:%M %p")
+
+
+
 
         if task_list[i]["task_notes"] != None:
             tasks_notes_frame = customtkinter.CTkScrollableFrame(master=right_frame, width=340, label_fg_color="black")
@@ -277,12 +368,12 @@ def draw_tasks():
 
             task_edit_button = customtkinter.CTkButton(master=task_options_frame, font=task_font, fg_color="#dbdbdb",
                                                        image=edit_image, text_color="black", text="", width=40,
-                                                       height=40)
+                                                       height=40, command=lambda i=i, notes=notes: create_edit_window(task_list[i], notes))
             task_edit_button.grid(row=0, column=0)
 
             task_complete_button = customtkinter.CTkButton(master=task_options_frame, font=task_font,
                                                            fg_color="#dbdbdb",image=checked_image, text_color="black",
-                                                           text="", width=40, height=40)
+                                                           text="", width=40, height=40, command=lambda i=i, notes=notes: complete_task(task_list[i], notes))
             task_complete_button.grid(row=0, column=1, padx=(5, 0))
 
             task_delete_button = customtkinter.CTkButton(master=task_options_frame, font=task_font, fg_color="#dbdbdb",
@@ -301,8 +392,7 @@ def draw_tasks():
                                                           corner_radius=5, text="")
             tasks_notes_checkbox.grid(row=row_counter, column=1, pady=2)
             task_str = str(task_list[i]["task_name"])
-            task_label_frame = customtkinter.CTkFrame(master=right_frame, width=400, fg_color="#dbdbdb",
-                                                      border_color="blue", border_width=1)
+            task_label_frame = customtkinter.CTkFrame(master=right_frame, width=400, fg_color="#dbdbdb")
             task_label_frame.grid(row=row_counter, column=0, padx=2, pady=2, sticky="nsew")
 
             task_label = customtkinter.CTkLabel(master=task_label_frame, width=400, height=30, font=task_font,
@@ -321,7 +411,7 @@ def draw_tasks():
             task_complete_button = customtkinter.CTkButton(master=task_options_frame, font=task_font,
                                                            fg_color="#dbdbdb",
                                                            image=checked_image, text_color="black", text="", width=40,
-                                                           height=40)
+                                                           height=40, command=lambda i=i: complete_task(task_list[i]))
             task_complete_button.grid(row=0, column=1, padx=(5, 0))
 
             task_delete_button = customtkinter.CTkButton(master=task_options_frame, font=task_font, fg_color="#dbdbdb",
@@ -593,7 +683,7 @@ def create_add_task():
 
     task_priority_box = customtkinter.CTkComboBox(master=task_priority_frame, fg_color="#1f1e1c",
                                                   values=["1", "2", "3", "4", "5"], font=app_font, text_color="white")
-    task_priority_box.set(1)
+    task_priority_box.set("1")
     task_priority_box.grid(row=0, column=1)
 
     notes_frame = customtkinter.CTkFrame(master=add_task_frame, width=350, fg_color="#232323")
@@ -636,13 +726,3 @@ draw_tasks()
 
 root.mainloop()
 
-#
-#
-# @app.delete("/tasks/{id}", status_code=status.HTTP_204_NO_CONTENT)
-# def delete_task(id:int):
-#     cursor.execute("""DELETE FROM tasks WHERE id = %s RETURNING *""", (str(id),))
-#     deleted_task = cursor.fetchone()
-#     conn.commit()
-#
-#     if not deleted_task:
-#         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"no tasks with id: {id} was not found")
