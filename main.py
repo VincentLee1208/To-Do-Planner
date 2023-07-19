@@ -91,10 +91,9 @@ def get_tasks():
     for task in tasks:
         task_list.append(task)
 
-    print(task_list)
 
 
-def add_task(task_name, task_category, time_picker, task_priority_box, notes_frame, add_task_frame):
+def submit_task(task_name, task_category, time_picker, task_priority_box, notes_frame, submit_task_frame, task_option, task_id=None):
     if task_name.get() == "":
         window = customtkinter.CTkToplevel(fg_color="#232323")
         window.geometry("%dx%d+%d+%d" % (300, 90, 2000, 300))
@@ -143,21 +142,48 @@ def add_task(task_name, task_category, time_picker, task_priority_box, notes_fra
         if task_category.get() != "":
             task_category_str = task_category.get()
 
-        cursor.execute(
-            """INSERT INTO tasks (task_name, task_category, date_due, time_due, task_finished, task_priority, task_notes) VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING *""",
-            (task_name_str, task_category_str, due_date_str, time_due_str, False, task_priority_str, notes))
+        if task_option == "Add":
+            cursor.execute(
+                """INSERT INTO tasks (task_name, task_category, date_due, time_due, task_finished, task_priority, task_notes) VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING *""",
+                (task_name_str, task_category_str, due_date_str, time_due_str, False, task_priority_str, notes))
 
-        new_task = cursor.fetchone()
-        conn.commit()
+            conn.commit()
 
-        window = customtkinter.CTkToplevel(fg_color="#232323")
-        window.geometry("%dx%d+%d+%d" % (300, 90, 2000, 300))
-        window.transient(master=notes_frame)
-        window.resizable(False, False)
+            window = customtkinter.CTkToplevel(fg_color="#232323")
+            window.geometry("%dx%d+%d+%d" % (300, 90, 2000, 300))
+            window.transient(master=notes_frame)
+            window.resizable(False, False)
 
-        success_label = customtkinter.CTkLabel(master=window, width=300, height=30, font=app_font, fg_color="#232323",
-                                               justify="center", text_color="white", text="Task added successfully!")
-        success_label.grid(row=0, column=0, pady=5)
+            success_label = customtkinter.CTkLabel(master=window, width=300, height=30, font=app_font, fg_color="#232323",
+                                                   justify="center", text_color="white", text="Task added successfully!")
+            success_label.grid(row=0, column=0, pady=5)
+
+            destroy_add_task(submit_task_frame)
+        elif task_option == "Update":
+            cursor.execute("""UPDATE tasks 
+                                SET task_name = %s, 
+                                    task_category= %s, 
+                                    date_due= %s, 
+                                    time_due = %s, 
+                                    task_finished = %s, 
+                                    task_priority = %s, 
+                                    task_notes = %s 
+                                WHERE id = %s""",
+                           (task_name_str, task_category_str, due_date_str, time_due_str, False, task_priority_str, notes, task_id))
+            conn.commit()
+
+            window = customtkinter.CTkToplevel(fg_color="#232323")
+            window.geometry("%dx%d+%d+%d" % (300, 90, 2000, 300))
+            window.transient(master=notes_frame)
+            window.resizable(False, False)
+
+            success_label = customtkinter.CTkLabel(master=window, width=300, height=30, font=app_font,
+                                                   fg_color="#232323",
+                                                   justify="center", text_color="white",
+                                                   text="Task updated successfully!")
+            success_label.grid(row=0, column=0, pady=5)
+
+            destroy_window(submit_task_frame)
 
         okay_button = customtkinter.CTkButton(master=window, width=100, height=30, font=app_font, fg_color="#dbdbdb",
                                               text_color="black", text="Okay", command=lambda: destroy_window(window))
@@ -167,8 +193,6 @@ def add_task(task_name, task_category, time_picker, task_priority_box, notes_fra
         new_note_list.clear()
         time_selected = False
         due_date = datetime.today().strftime('%Y-%m-%d')
-
-        destroy_add_task(add_task_frame)
 
         redraw_categories()
         redraw_tasks()
@@ -277,8 +301,108 @@ def change_task_complete(task,check_window=None):
 
 
 def create_edit_window(task, notes=None):
+    edit_window = customtkinter.CTkToplevel()
+    edit_window.geometry("430x750")
+    edit_window.transient(master=root)
+    edit_window.resizable(False, False)
+
+    edit_task_frame = customtkinter.CTkScrollableFrame(master=edit_window, width=420, height=750, fg_color="#232323")
+    edit_task_frame.grid(row=0, column=0)
+
+    edit_label = customtkinter.CTkLabel(master=edit_task_frame, width=330, height=62, font=task_font, text_color="white", text="Edit Task", anchor="w")
+    edit_label.grid(row=0, column=0, padx=(10,0))
+
+    close_button = customtkinter.CTkButton(master=edit_task_frame, width=40, fg_color="#232323", font=exit_font, text_color="white", text="X", command=lambda: destroy_window(edit_window))
+    close_button.grid(row=0, column=1, padx=10)
+
+    task_name_label = customtkinter.CTkLabel(master=edit_task_frame, width=400, height=30, font=app_font, text_color="white", text="Task Name: ", anchor="w")
+    task_name_label.grid(row=1, column=0, columnspan=2, padx=10)
+
+    task_name_stringvar = customtkinter.StringVar(value=task["task_name"])
+    task_name = customtkinter.CTkEntry(master=edit_task_frame, width=400, height=30, font=app_font, textvariable=task_name_stringvar)
+    task_name.grid(row=2, column=0, columnspan=2, pady=5, padx=10)
+
+    task_category_label = customtkinter.CTkLabel(master=edit_task_frame, width=400, height=30, font=app_font,
+                                             text_color="white", text="Task Category: ", anchor="w")
+    task_category_label.grid(row=3, column=0, columnspan=2, padx=10)
 
 
+    task_category_stringvar = customtkinter.StringVar(value=task["task_category"])
+    task_category = customtkinter.CTkEntry(master=edit_task_frame, width=400, height=30, font=app_font,
+                                       textvariable=task_category_stringvar)
+    task_category.grid(row=4, column=0, columnspan=2, pady=5, padx=10)
+
+    due_date_frame = customtkinter.CTkFrame(master=edit_task_frame, width=400, height=40, fg_color="#232323",
+                                            corner_radius=5)
+    due_date_frame.grid(row=5, column=0, columnspan=2,pady=5)
+
+    due_label = customtkinter.CTkLabel(master=due_date_frame, text="Due: ", font=app_font, text_color="white", width=50,
+                                       height=40, fg_color="#232323")
+    due_label.grid(row=0, column=0, pady=5)
+
+    global due_date
+    due_date = task["date_due"]
+
+    task_date_due = customtkinter.CTkButton(master=due_date_frame, text=task["date_due"], text_color="white",
+                                            fg_color="#1f1e1c", width=300, height=40, font=app_font,
+                                            command=lambda: open_calendar(due_date_frame, task_date_due))
+    task_date_due.grid(row=0, column=1, pady=5)
+
+    time_picker_frame = customtkinter.CTkFrame(master=edit_task_frame, width=350, height=40, fg_color="#232323")
+
+    time_picker = SpinTimePickerModern(time_picker_frame)
+    time_picker.addAll(constants.HOURS12)
+    time_picker.configureAll(bg="#404040", height=1, fg="#dbdbdb", font=app_font, hoverbg="#dbdbdb",
+                             hovercolor="#2dbbd0", clickedbg="#dbdbdb", clickedcolor="#2dbbd0")
+    time_picker.configure_separator(bg="#404040", fg="#ffffff")
+
+    time_picker_button = customtkinter.CTkButton(master=edit_task_frame, width=300, height=30, fg_color="#dbdbdb",
+                                                 text_color="black", font=app_font, text="Set Optional Time Deadline",
+                                                 command=lambda:
+                                                 add_time_picker(time_picker_frame, time_picker, 6,time_picker_button))
+
+    if task["time_due"] is not None:
+        if task["time_due"].hour >= 13:
+            time_picker.set12Hrs(task["time_due"].hour-12)
+        else:
+            time_picker.set12Hrs(task["time_due"].hour)
+
+        time_picker.setMins(task["time_due"].minute)
+        add_time_picker(time_picker_frame, time_picker, 6, time_picker_button)
+
+    task_priority_frame = customtkinter.CTkFrame(master=edit_task_frame, width=400, height=30, fg_color="#232323")
+    task_priority_frame.grid(row=7, column=0, columnspan=2, pady=10)
+
+    task_priority_label = customtkinter.CTkLabel(master=task_priority_frame, width=30, font=app_font,
+                                                 text_color="white", text="Task Priority: ")
+    task_priority_label.grid(row=0, column=0, padx=10)
+
+    task_priority_box = customtkinter.CTkComboBox(master=task_priority_frame, fg_color="#1f1e1c",
+                                                  values=["1", "2", "3", "4", "5"], font=app_font, text_color="white")
+    task_priority_box.set(str(task["task_priority"]))
+    task_priority_box.grid(row=0, column=1)
+
+    notes_frame = customtkinter.CTkFrame(master=edit_task_frame, width=350, fg_color="#232323")
+
+    if task["task_notes"] is None:
+        notes_to_display = []
+        add_notes_button = customtkinter.CTkButton(master=edit_task_frame, width=300, height=30, fg_color="#dbdbdb",
+                                                   text_color="black", font=app_font, text="Add Notes",
+                                                   command=lambda: add_note_section(edit_task_frame, notes_frame,
+                                                                                    add_notes_button, 8,notes_to_display))
+        add_notes_button.grid(row=8, column=0, columnspan=2, pady=5)
+    else:
+        notes_to_display = task["task_notes"]
+        add_notes_button = customtkinter.CTkButton(master=edit_task_frame, width=300, height=30, fg_color="#dbdbdb",
+                                                   text_color="black", font=app_font, text="Add Notes",
+                                                   command=lambda: add_note_section(edit_task_frame, notes_frame,
+                                                                                    add_notes_button, 8,notes_to_display))
+        add_note_section(edit_task_frame, notes_frame, add_notes_button, 8,notes_to_display)
+
+    update_task_button = customtkinter.CTkButton(master=edit_task_frame, width=300, height=60, fg_color="#2dbbd0",
+                                              text_color="white", font=app_font, text="Update Task",
+                                          command=lambda: submit_task(task_name, task_category, time_picker, task_priority_box, notes_frame, edit_window, "Update", task["id"]))
+    update_task_button.grid(row=10, column=0, columnspan=2, pady=20)
 
 def destroy_window(window):
     children = window.grid_slaves()
@@ -405,7 +529,7 @@ def draw_tasks():
 
             task_edit_button = customtkinter.CTkButton(master=task_options_frame, font=task_font, fg_color="#dbdbdb",
                                                        image=edit_image, text_color="black", text="", width=40,
-                                                       height=40)
+                                                       height=40, command=lambda i=i: create_edit_window(task_list[i]))
             task_edit_button.grid(row=0, column=0)
 
             task_complete_button = customtkinter.CTkButton(master=task_options_frame, font=task_font,
@@ -514,7 +638,7 @@ def redraw_categories():
 
 def open_calendar(due_date_frame, task_date_due):
     window = customtkinter.CTkToplevel(fg_color="#232323")
-    window.geometry("%dx%d+%d+%d" % (280, 250, 2000, 300))
+    window.geometry("280x250")
     window.transient(master=due_date_frame)
 
     year = datetime.today().year
@@ -540,13 +664,13 @@ def select_date(task_date_due, window, cal):
     window.destroy()
 
 
-def create_time_picker(time_picker_frame, time_picker_button, time_picker):
+def add_time_picker(time_picker_frame, time_picker, time_picker_row, time_picker_button):
     time_picker_button.grid_remove()
 
     global time_selected
     time_selected = True
 
-    time_picker_frame.grid(row=4, column=0)
+    time_picker_frame.grid(row=time_picker_row, column=0, columnspan=2)
 
     time_picker_label = customtkinter.CTkLabel(master=time_picker_frame, width=80, font=app_font, fg_color="#232323",
                                                text_color="white", text="Optional Time Deadline: ")
@@ -556,58 +680,63 @@ def create_time_picker(time_picker_frame, time_picker_button, time_picker):
 
     time_picker_exit = customtkinter.CTkButton(master=time_picker_frame, width=25, fg_color="#f3050a", font=exit_font,
                                                text_color="white", text="X",
-                                               command=lambda: destroy_time_picker(time_picker, time_picker_frame,
-                                                                                   time_picker_button))
+                                               command=lambda: destroy_time_picker(time_picker, time_picker_frame, time_picker_row, time_picker_button))
     time_picker_exit.grid(row=0, column=2)
 
 
-def destroy_time_picker(time_picker, time_picker_frame, time_picker_button):
+def destroy_time_picker(time_picker, time_picker_frame, time_picker_row,time_picker_button):
     global time_selected
     time_selected = False
     time_picker.grid_remove()
     time_picker_frame.grid_remove()
 
-    time_picker_button.grid(row=4, column=0, pady=5)
+    time_picker_button.grid(row=time_picker_row, column=0, columnspan=2,pady=5)
 
 
-def add_note_section(add_task_frame, notes_frame, add_notes_button, notes_to_display):
+def add_note_section(add_task_frame, notes_frame, add_notes_button, notes_row, notes_to_display):
     add_notes_button.grid_remove()
-    notes_frame.grid(row=6, column=0, pady=10)
+    notes_frame.grid(row=notes_row, column=0, columnspan=2,pady=10)
 
     notes_title = customtkinter.CTkLabel(master=notes_frame, width=80, font=app_font, fg_color="#232323",
                                          text_color="white", text="Notes: ")
-    notes_title.grid(row=0, column=0)
+    notes_title.grid(row=0, column=0, columnspan=2)
 
     add_note_entry = customtkinter.CTkButton(master=add_task_frame, width=350, height=40, font=app_font,
                                              text_color="white", fg_color="#232323", text="+ Add Note",
                                              command=lambda: create_note_entry(notes_frame, add_notes_button,
-                                                                               add_note_entry))
-    add_note_entry.grid(row=7, column=0)
+                                                                               add_note_entry, notes_row))
+    add_note_entry.grid(row=notes_row+1, column=0, columnspan=2)
 
-    create_note_entry(notes_frame, add_notes_button, add_note_entry)
+    if len(notes_to_display) == 0:
+        create_note_entry(notes_frame, add_notes_button, add_note_entry, notes_row)
+    else:
+        for note in notes_to_display:
+            create_note_entry(notes_frame, add_notes_button, add_note_entry, notes_row, note)
 
-    print(new_note_counter)
 
-
-def create_note_entry(notes_frame, add_notes_button, add_note_entry):
+def create_note_entry(notes_frame, add_notes_button, add_note_entry, notes_row, note_text=None):
     global new_note_counter
-    note_entry = customtkinter.CTkEntry(master=notes_frame, width=250, font=app_font, text_color="black",
-                                        placeholder_text="New Note")
+    if note_text is None:
+        note_entry = customtkinter.CTkEntry(master=notes_frame, width=250, font=app_font, text_color="black",
+                                            placeholder_text="New Note")
+    else:
+        note_stringvar = customtkinter.StringVar(value=note_text)
+        note_entry = customtkinter.CTkEntry(master=notes_frame, width=250, font=app_font, text_color="black",
+                                            textvariable=note_stringvar)
     note_entry.grid(row=new_note_counter, column=0, pady=5)
 
     note_delete = customtkinter.CTkButton(master=notes_frame, width=25, fg_color="#f3050a", font=exit_font,
                                           text_color="white", text="X",
                                           command=lambda: delete_note(note_delete, add_notes_button, add_note_entry,
-                                                                      note_entry))
+                                                                      note_entry, notes_row))
     note_delete.grid(row=new_note_counter, column=1, padx=5)
 
     new_note_counter += 1
     new_note_list.append(note_entry)
 
-    print(new_note_counter)
 
 
-def delete_note(note_delete, add_notes_button, add_note_entry, note_entry):
+def delete_note(note_delete, add_notes_button, add_note_entry, note_entry, notes_row):
     global new_note_counter
     note_entry.destroy()
     note_delete.destroy()
@@ -615,7 +744,7 @@ def delete_note(note_delete, add_notes_button, add_note_entry, note_entry):
     new_note_list.remove(note_entry)
     if new_note_counter == 1:
         add_note_entry.destroy()
-        add_notes_button.grid(row=6, column=0, pady=10)
+        add_notes_button.grid(row=notes_row+1, column=0, columnspan=2, pady=10)
 
 
 def create_add_task():
@@ -625,14 +754,14 @@ def create_add_task():
     global time_selected
     notes_to_display = []
 
-    add_task_frame = customtkinter.CTkFrame(master=root, width=400, height=750, fg_color="#232323")
+    add_task_frame = customtkinter.CTkScrollableFrame(master=root, width=400, height=750, fg_color="#232323")
     add_task_frame.place(x=1280, y=0)
 
-    add_task_title = customtkinter.CTkLabel(master=add_task_frame, width=370, height=62, font=task_font,
+    add_task_title = customtkinter.CTkLabel(master=add_task_frame, width=330, height=62, font=task_font,
                                             text="Add task", text_color="white")
     add_task_title.grid(row=0, column=0)
 
-    close_button = customtkinter.CTkButton(master=add_task_frame, width=30, fg_color="#232323", font=exit_font,
+    close_button = customtkinter.CTkButton(master=add_task_frame, width=40, fg_color="#232323", font=exit_font,
                                            text_color="white", text="X",
                                            command=lambda: destroy_add_task(add_task_frame))
     close_button.grid(row=0, column=1)
@@ -671,7 +800,7 @@ def create_add_task():
     time_picker_button = customtkinter.CTkButton(master=add_task_frame, width=300, height=30, fg_color="#dbdbdb",
                                                  text_color="black", font=app_font, text="Set Optional Time Deadline",
                                                  command=lambda:
-                                                 create_time_picker(time_picker_frame, time_picker_button, time_picker))
+                                                 add_time_picker(time_picker_frame, time_picker,4, time_picker_button))
     time_picker_button.grid(row=4, column=0, pady=5)
 
     task_priority_frame = customtkinter.CTkFrame(master=add_task_frame, width=400, height=30, fg_color="#232323")
@@ -691,14 +820,14 @@ def create_add_task():
     add_notes_button = customtkinter.CTkButton(master=add_task_frame, width=300, height=30, fg_color="#dbdbdb",
                                                text_color="black", font=app_font, text="Add Notes",
                                                command=lambda: add_note_section(add_task_frame, notes_frame,
-                                                                                add_notes_button, notes_to_display))
+                                                                                add_notes_button, 6,notes_to_display))
     add_notes_button.grid(row=6, column=0, pady=10)
 
-    submit_new_task = customtkinter.CTkButton(master=add_task_frame, width=300, height=60, fg_color="#2dbbd0",
+    add_new_task = customtkinter.CTkButton(master=add_task_frame, width=300, height=60, fg_color="#2dbbd0",
                                               text_color="white", font=app_font, text="Submit New Task",
-                                              command=lambda: add_task(task_name, task_category, time_picker,
-                                                                       task_priority_box, notes_frame, add_task_frame))
-    submit_new_task.grid(row=8, column=0, pady=20)
+                                              command=lambda: submit_task(task_name, task_category, time_picker,
+                                                                       task_priority_box, notes_frame, add_task_frame, "Add"))
+    add_new_task.grid(row=8, column=0, pady=20)
 
 
 left_frame = customtkinter.CTkFrame(master=root, width=250, height=750, fg_color="#1f1e1c")
