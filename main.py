@@ -21,7 +21,11 @@ class Task(BaseModel):
 
 while True:
     try:
-        conn = psycopg.connect(host="localhost", dbname="To-Do-Planner", user="postgres", password="postgresPass1.",
+        conn = psycopg.connect(host="to-do-planner.cbhseyowwdhe.us-west-2.rds.amazonaws.com",
+                               dbname="To_Do_Planner",
+                               user="postgres",
+                               password="postgresPass1.",
+                               port="5432",
                                row_factory=dict_row)
         cursor = conn.cursor()
         print("Database connection successful")
