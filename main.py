@@ -3,11 +3,14 @@ from datetime import date, datetime
 from tkcalendar import Calendar
 from tktimepicker import SpinTimePickerModern
 from tktimepicker import constants
+from dotenv import load_dotenv
+
 
 import psycopg
 import time
 import customtkinter
 import tkinter
+import os
 from psycopg.rows import dict_row
 
 
@@ -19,12 +22,14 @@ class Task(BaseModel):
     finished: bool = False
 
 
+load_dotenv('./.env')
+
 while True:
     try:
         conn = psycopg.connect(host="to-do-planner.cbhseyowwdhe.us-west-2.rds.amazonaws.com",
                                dbname="To_Do_Planner",
                                user="postgres",
-                               password="postgresPass1.",
+                               password=os.environ.get("DATABASE_PASSWORD"),
                                port="5432",
                                row_factory=dict_row)
         cursor = conn.cursor()
